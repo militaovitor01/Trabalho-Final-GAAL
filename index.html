@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gauss-Jordan · Resolução de Sistemas Lineares</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper: #f6f3ec;
+    --paper-2: #efeadf;
+    --ink: #1c2321;
+    --ink-soft: #4b534f;
+    --rule: #d8d2c2;
+    --grid-line: #c9c2ac;
+    --pivot: #c45a3a;
+    --pivot-soft: #f0d9cd;
+    --ok: #2f6f5e;
+    --ok-soft: #dbeae3;
+    --bad: #a8392f;
+    --bad-soft: #f3ddd8;
+    --indet: #8a6d2f;
+    --indet-soft: #f1e6c9;
+    --accent-2: #2c4a5e;
+
+    --display: 'Fraunces', serif;
+    --body: 'Space Grotesk', sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background: var(--paper);
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 28px 28px;
+    background-position: -1px -1px;
+    color: var(--ink);
+    font-family: var(--body);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a{color:inherit;}
+
+  .wrap{
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 40px 28px 90px;
+  }
+
+  /* ---------- HEADER ---------- */
+  header{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    gap: 24px;
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 22px;
+    margin-bottom: 36px;
+    flex-wrap: wrap;
+  }
+  .brand-eyebrow{
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--pivot);
+    margin: 0 0 8px;
+  }
+  h1{
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: clamp(34px, 5vw, 52px);
+    line-height: 1.02;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  h1 em{
+    font-style: italic;
+    color: var(--pivot);
+  }
+  .subhead{
+    max-width: 420px;
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--ink-soft);
+    text-align: right;
+  }
+
+  /* ---------- LAYOUT ---------- */
+  .layout{
+    display: grid;
+    grid-template-columns: 360px 1fr;
+    gap: 32px;
+    align-items: start;
+  }
+  @media (max-width: 880px){
+    .layout{ grid-template-columns: 1fr; }
+  }
+
+  .panel{
+    background: var(--paper-2);
+    border: 1.5px solid var(--ink);
+    box-shadow: 5px 5px 0 rgba(28,35,33,0.08);
+  }
+  .panel-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding: 14px 18px;
+    border-bottom: 1.5px solid var(--ink);
+  }
+  .panel-head h2{
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin: 0;
+    font-weight: 600;
+  }
+  .panel-body{ padding: 20px; }
+
+  /* ---------- CONTROLS ---------- */
+  .dims-row{
+    display:flex;
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+  .field{ flex:1; }
+  .field label{
+    display:block;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin-bottom: 6px;
+  }
+  .field input[type="number"]{
+    width:100%;
+    font-family: var(--mono);
+    font-size: 15px;
+    padding: 9px 10px;
+    border: 1.5px solid var(--ink);
+    background: var(--paper);
+    color: var(--ink);
+  }
+  .field input[type="number"]:focus{
+    outline: 2px solid var(--pivot);
+    outline-offset: 1px;
+  }
+
+  .matrix-builder{
+    margin-bottom: 18px;
+  }
+  .builder-label{
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin-bottom: 10px;
+    display:flex;
+    align-items:center;
+    gap: 8px;
+  }
+  .legend-coef{ color: var(--accent-2); }
+  .legend-bar{ color: var(--ink-soft); }
+  .legend-res{ color: var(--pivot); }
+
+  #builderGrid{
+    display: inline-grid;
+    gap: 6px;
+    background: var(--paper);
+    border: 1.5px solid var(--ink);
+    padding: 12px;
+  }
+  .cell-input{
+    width: 56px;
+    text-align:center;
+    font-family: var(--mono);
+    font-size: 14px;
+    padding: 7px 4px;
+    border: 1px solid var(--rule);
+    background: #fff;
+    color: var(--ink);
+  }
+  .cell-input.coef{ border-bottom: 2px solid var(--accent-2); }
+  .cell-input.res{ border-bottom: 2px solid var(--pivot); background: #fffaf6; }
+  .cell-input:focus{
+    outline: 2px solid var(--pivot);
+    outline-offset: 0px;
+    position: relative;
+    z-index: 2;
+  }
+  .bar-col{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color: var(--ink-soft);
+    font-family: var(--mono);
+    font-size: 16px;
+  }
+
+  .btn-row{ display:flex; gap:10px; flex-wrap:wrap; margin-top: 6px;}
+  button{
+    font-family: var(--body);
+    font-weight: 600;
+    font-size: 13px;
+    border: 1.5px solid var(--ink);
+    background: var(--paper);
+    color: var(--ink);
+    padding: 11px 16px;
+    cursor: pointer;
+    transition: transform 0.08s ease, box-shadow 0.08s ease;
+  }
+  button:hover{
+    box-shadow: 3px 3px 0 rgba(28,35,33,0.18);
+    transform: translate(-1px,-1px);
+  }
+  button:active{
+    box-shadow: none;
+    transform: translate(0,0);
+  }
+  button.primary{
+    background: var(--ink);
+    color: var(--paper);
+  }
+  button.ghost{
+    background: transparent;
+  }
+  button:disabled{
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform:none;
+    box-shadow:none;
+  }
+
+  .examples{
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px dashed var(--rule);
+  }
+  .examples .builder-label{ margin-bottom: 8px; }
+  .example-btn{
+    display:block;
+    width:100%;
+    text-align:left;
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 9px 10px;
+    margin-bottom: 6px;
+    border: 1px solid var(--rule);
+    background: #fff;
+  }
+  .example-btn:hover{ border-color: var(--ink); }
+  .example-tag{
+    display:inline-block;
+    font-size: 10px;
+    padding: 1px 6px;
+    margin-right: 8px;
+    border-radius: 2px;
+    font-weight: 700;
+  }
+  .tag-det{ background: var(--ok-soft); color: var(--ok); }
+  .tag-indet{ background: var(--indet-soft); color: var(--indet); }
+  .tag-imp{ background: var(--bad-soft); color: var(--bad); }
+
+  /* ---------- RESULT AREA ---------- */
+  #resultArea{ min-height: 200px; }
+  .empty-state{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding: 70px 20px;
+    color: var(--ink-soft);
+  }
+  .empty-state .glyph{
+    font-family: var(--display);
+    font-size: 64px;
+    color: var(--rule);
+    line-height: 1;
+    margin-bottom: 14px;
+  }
+  .empty-state p{
+    max-width: 320px;
+    font-size: 14px;
+    line-height: 1.6;
+    margin: 0;
+  }
+
+  /* classification banner */
+  .classification-banner{
+    display:flex;
+    align-items:center;
+    gap: 14px;
+    padding: 18px 20px;
+    border: 1.5px solid var(--ink);
+    margin-bottom: 24px;
+  }
+  .classification-banner.det{ background: var(--ok-soft); border-color: var(--ok); }
+  .classification-banner.indet{ background: var(--indet-soft); border-color: var(--indet); }
+  .classification-banner.imp{ background: var(--bad-soft); border-color: var(--bad); }
+  .classification-banner .badge-num{
+    font-family: var(--mono);
+    font-size: 11px;
+    border: 1.5px solid currentColor;
+    border-radius: 50%;
+    width: 30px; height: 30px;
+    display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;
+  }
+  .classification-banner h3{
+    font-family: var(--display);
+    font-size: 20px;
+    margin: 0 0 3px;
+  }
+  .classification-banner p{
+    font-size: 13px;
+    margin:0;
+    color: var(--ink-soft);
+  }
+
+  .solution-block{
+    margin-bottom: 28px;
+  }
+  .solution-block h3{
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin: 0 0 12px;
+    color: var(--ink-soft);
+  }
+  .solution-vars{
+    display:flex;
+    flex-wrap:wrap;
+    gap: 10px;
+  }
+  .var-chip{
+    font-family: var(--mono);
+    font-size: 15px;
+    background: #fff;
+    border: 1.5px solid var(--ink);
+    padding: 8px 14px;
+  }
+  .var-chip b{ color: var(--pivot); }
+  .free-note{
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 10px;
+    line-height: 1.6;
+  }
+  .free-note code{
+    font-family: var(--mono);
+    background: var(--paper);
+    padding: 1px 5px;
+    border: 1px solid var(--rule);
+  }
+
+  /* steps */
+  .steps-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom: 16px;
+    flex-wrap:wrap;
+    gap: 10px;
+  }
+  .steps-header h3{
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin: 0;
+    color: var(--ink-soft);
+  }
+  .step-nav{ display:flex; align-items:center; gap:10px; }
+  .step-counter{
+    font-family: var(--mono);
+    font-size: 13px;
+    min-width: 64px;
+    text-align:center;
+  }
+  .nav-btn{
+    width: 34px; height: 34px;
+    padding:0;
+    display:flex; align-items:center; justify-content:center;
+    font-size: 16px;
+  }
+
+  .step-card{
+    border: 1.5px solid var(--ink);
+    background: #fff;
+  }
+  .step-desc{
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 12px 16px;
+    background: var(--ink);
+    color: var(--paper);
+    line-height: 1.5;
+  }
+  .step-desc .step-idx{
+    color: var(--pivot-soft);
+    margin-right: 8px;
+  }
+
+  .matrix-stage{
+    padding: 26px;
+    overflow-x:auto;
+    display:flex;
+    justify-content:center;
+  }
+  .matrix-table{
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+  .matrix-table td{
+    font-family: var(--mono);
+    font-size: 15px;
+    padding: 10px 14px;
+    text-align:center;
+    min-width: 48px;
+    position: relative;
+    transition: background 0.25s ease, color 0.25s ease;
+  }
+  .matrix-table td.changed{
+    background: var(--pivot-soft);
+    color: var(--pivot);
+    font-weight: 600;
+  }
+  .matrix-table td.aug-col{
+    border-left: 2px solid var(--ink);
+  }
+  .matrix-bracket-left, .matrix-bracket-right{
+    border-top: 2px solid var(--ink);
+    border-bottom: 2px solid var(--ink);
+  }
+  .matrix-bracket-left{ border-left: 2px solid var(--ink); width: 8px; }
+  .matrix-bracket-right{ border-right: 2px solid var(--ink); width: 8px; }
+
+  .all-steps-toggle{
+    margin-top: 14px;
+    text-align:center;
+  }
+
+  .history-list{
+    margin-top: 18px;
+    border-top: 1.5px solid var(--ink);
+  }
+  .history-row{
+    display:flex;
+    gap: 12px;
+    padding: 14px 4px;
+    border-bottom: 1px solid var(--rule);
+    font-family: var(--mono);
+    font-size: 12.5px;
+    align-items:flex-start;
+  }
+  .history-row .h-idx{
+    color: var(--pivot);
+    flex-shrink:0;
+    width: 26px;
+  }
+  .history-row .h-desc{ flex:1; color: var(--ink-soft); line-height: 1.5; }
+
+  footer{
+    margin-top: 60px;
+    padding-top: 20px;
+    border-top: 1px solid var(--rule);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-soft);
+    display:flex;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap: 8px;
+  }
+
+  .error-msg{
+    background: var(--bad-soft);
+    border: 1.5px solid var(--bad);
+    color: var(--bad);
+    padding: 12px 16px;
+    font-size: 13px;
+    margin-bottom: 16px;
+    font-family: var(--mono);
+  }
+
+  ::selection{ background: var(--pivot-soft); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <p class="brand-eyebrow">Trabalho Computacional 1 — Álgebra Linear</p>
+      <h1>Gauss<em>·</em>Jordan</h1>
+    </div>
+    <p class="subhead">Resolução de sistemas lineares por eliminação de Gauss-Jordan, com histórico completo das operações elementares sobre linhas.</p>
+  </header>
+
+  <div class="layout">
+
+    <!-- ============ PAINEL DE ENTRADA ============ -->
+    <div class="panel">
+      <div class="panel-head">
+        <h2>① Entrada do sistema</h2>
+      </div>
+      <div class="panel-body">
+
+        <div class="dims-row">
+          <div class="field">
+            <label for="numEq">Equações (m)</label>
+            <input type="number" id="numEq" min="1" max="8" value="3">
+          </div>
+          <div class="field">
+            <label for="numVar">Incógnitas (n)</label>
+            <input type="number" id="numVar" min="1" max="8" value="3">
+          </div>
+        </div>
+        <button class="ghost" id="btnBuild" style="width:100%; margin-bottom:18px;">Gerar grade de coeficientes</button>
+
+        <div class="matrix-builder">
+          <div class="builder-label">
+            <span class="legend-coef">■ Coeficientes</span>
+            <span class="legend-bar">|</span>
+            <span class="legend-res">■ Resultado (b)</span>
+          </div>
+          <div id="builderGrid"></div>
+        </div>
+
+        <div class="btn-row">
+          <button class="primary" id="btnSolve" style="flex:1;">Resolver sistema</button>
+          <button class="ghost" id="btnClear">Limpar</button>
+        </div>
+
+        <div class="examples">
+          <div class="builder-label">Exemplos prontos</div>
+          <button class="example-btn" data-example="det"><span class="example-tag tag-det">SPD</span>Possível e determinado (3×3)</button>
+          <button class="example-btn" data-example="indet"><span class="example-tag tag-indet">SPI</span>Possível e indeterminado (2×3)</button>
+          <button class="example-btn" data-example="imp"><span class="example-tag tag-imp">SI</span>Impossível (2×2)</button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ============ PAINEL DE RESULTADO ============ -->
+    <div class="panel">
+      <div class="panel-head">
+        <h2>② Processamento e solução</h2>
+      </div>
+      <div class="panel-body" id="resultArea">
+        <div class="empty-state">
+          <div class="glyph">[ ]</div>
+          <p>Monte a matriz aumentada à esquerda — diferenciando coeficientes (A) do vetor de resultados (b) — e clique em <strong>Resolver sistema</strong> para ver cada operação elementar até a forma escalonada reduzida.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <footer>
+    <span>Método de Gauss-Jordan · pivotamento parcial · tolerância numérica 1e-9</span>
+    <span>Trabalho Computacional 1</span>
+  </footer>
+
+</div>
+
+<script>
+/* =========================================================
+   ESTADO
+========================================================= */
+let state = {
+  m: 3, n: 3,
+  steps: [],
+  finalMatrix: null,
+  classification: null,
+  rank: 0,
+  pivotCols: [],
+  currentStepIdx: 0,
+  showAllSteps: false,
+};
+
+/* =========================================================
+   CONSTRUÇÃO DA GRADE DE ENTRADA
+========================================================= */
+function buildGrid() {
+  const m = clamp(parseInt(document.getElementById('numEq').value) || 3, 1, 8);
+  const n = clamp(parseInt(document.getElementById('numVar').value) || 3, 1, 8);
+  document.getElementById('numEq').value = m;
+  document.getElementById('numVar').value = n;
+  state.m = m; state.n = n;
+
+  const grid = document.getElementById('builderGrid');
+  grid.innerHTML = '';
+  // colunas: n coef + 1 bar + 1 res
+  grid.style.gridTemplateColumns = `repeat(${n}, auto) auto auto`;
+
+  for (let i = 0; i < m; i++) {
+    for (let j = 0; j < n; j++) {
+      const inp = document.createElement('input');
+      inp.type = 'number';
+      inp.className = 'cell-input coef';
+      inp.id = `cell-${i}-${j}`;
+      inp.placeholder = '0';
+      inp.step = 'any';
+      grid.appendChild(inp);
+    }
+    const bar = document.createElement('div');
+    bar.className = 'bar-col';
+    bar.textContent = '|';
+    grid.appendChild(bar);
+
+    const resInp = document.createElement('input');
+    resInp.type = 'number';
+    resInp.className = 'cell-input res';
+    resInp.id = `cell-${i}-b`;
+    resInp.placeholder = '0';
+    resInp.step = 'any';
+    grid.appendChild(resInp);
+  }
+}
+
+function clamp(v, min, max){ return Math.max(min, Math.min(max, v)); }
+
+function readMatrixFromGrid() {
+  const m = state.m, n = state.n;
+  const coef = [];
+  const rhs = [];
+  for (let i = 0; i < m; i++) {
+    const row = [];
+    for (let j = 0; j < n; j++) {
+      const v = parseFloat(document.getElementById(`cell-${i}-${j}`).value);
+      row.push(isNaN(v) ? 0 : v);
+    }
+    coef.push(row);
+    const b = parseFloat(document.getElementById(`cell-${i}-b`).value);
+    rhs.push([isNaN(b) ? 0 : b]);
+  }
+  return { coef, rhs };
+}
+
+function fillGrid(coef, rhs) {
+  state.m = coef.length;
+  state.n = coef[0].length;
+  document.getElementById('numEq').value = state.m;
+  document.getElementById('numVar').value = state.n;
+  buildGrid();
+  for (let i = 0; i < state.m; i++) {
+    for (let j = 0; j < state.n; j++) {
+      document.getElementById(`cell-${i}-${j}`).value = coef[i][j];
+    }
+    document.getElementById(`cell-${i}-b`).value = rhs[i][0];
+  }
+}
+
+/* =========================================================
+   ALGORITMO DE GAUSS-JORDAN
+========================================================= */
+function cloneMatrix(M) { return M.map(row => row.slice()); }
+function almostZero(x, eps = 1e-9) { return Math.abs(x) < eps; }
+
+function diffCells(prev, curr) {
+  const cells = [];
+  for (let i = 0; i < curr.length; i++) {
+    for (let j = 0; j < curr[i].length; j++) {
+      if (!prev || !almostZero(prev[i][j] - curr[i][j])) cells.push(`${i}-${j}`);
+    }
+  }
+  return cells;
+}
+
+function gaussJordan(coef, rhs) {
+  const m = coef.length;
+  const n = coef[0].length;
+
+  let A = coef.map((row, i) => row.concat(rhs[i]));
+  const steps = [];
+  steps.push({ desc: 'Matriz aumentada inicial [A | b]', matrix: cloneMatrix(A), changed: [] });
+
+  let pivotRow = 0;
+  const pivotCols = [];
+
+  for (let col = 0; col < n && pivotRow < m; col++) {
+    let maxRow = pivotRow;
+    let maxVal = Math.abs(A[pivotRow][col]);
+    for (let r = pivotRow + 1; r < m; r++) {
+      if (Math.abs(A[r][col]) > maxVal) { maxVal = Math.abs(A[r][col]); maxRow = r; }
+    }
+    if (almostZero(maxVal)) continue;
+
+    if (maxRow !== pivotRow) {
+      const prev = cloneMatrix(A);
+      [A[pivotRow], A[maxRow]] = [A[maxRow], A[pivotRow]];
+      steps.push({
+        desc: `Troca de linhas: L${pivotRow + 1} ↔ L${maxRow + 1}  (pivotamento parcial — maior módulo na coluna ${col + 1})`,
+        matrix: cloneMatrix(A),
+        changed: [pivotRow, maxRow].flatMap(r => A[r].map((_, c) => `${r}-${c}`)),
+      });
+    }
+
+    const pivotVal = A[pivotRow][col];
+    if (!almostZero(pivotVal - 1)) {
+      const prev = cloneMatrix(A);
+      A[pivotRow] = A[pivotRow].map(v => v / pivotVal);
+      steps.push({
+        desc: `L${pivotRow + 1} → L${pivotRow + 1} ÷ (${fmt(pivotVal)})   — normaliza o pivô da coluna ${col + 1} para 1`,
+        matrix: cloneMatrix(A),
+        changed: A[pivotRow].map((_, c) => `${pivotRow}-${c}`),
+      });
+    }
+
+    for (let r = 0; r < m; r++) {
+      if (r === pivotRow) continue;
+      const factor = A[r][col];
+      if (!almostZero(factor)) {
+        const prev = cloneMatrix(A);
+        A[r] = A[r].map((v, c) => v - factor * A[pivotRow][c]);
+        steps.push({
+          desc: `L${r + 1} → L${r + 1} − (${fmt(factor)}) · L${pivotRow + 1}   — elimina coluna ${col + 1} na linha ${r + 1}`,
+          matrix: cloneMatrix(A),
+          changed: A[r].map((_, c) => `${r}-${c}`),
+        });
+      }
+    }
+
+    pivotCols.push(col);
+    pivotRow++;
+  }
+
+  const rank = pivotRow;
+  let inconsistent = false;
+  for (let r = rank; r < m; r++) {
+    if (!almostZero(A[r][n])) inconsistent = true;
+  }
+
+  let classification;
+  if (inconsistent) classification = 'IMPOSSIVEL';
+  else if (rank === n) classification = 'DETERMINADO';
+  else classification = 'INDETERMINADO';
+
+  steps.push({ desc: 'Forma escalonada reduzida obtida', matrix: cloneMatrix(A), changed: [], isFinal: true });
+
+  return { steps, finalMatrix: A, rank, pivotCols, classification, n, m };
+}
+
+function fmt(x) {
+  if (almostZero(x)) return '0';
+  if (almostZero(x - Math.round(x))) return String(Math.round(x));
+  return x.toFixed(4).replace(/0+$/, '').replace(/\.$/, '');
+}
+
+/* =========================================================
+   RENDERIZAÇÃO
+========================================================= */
+function renderMatrix(matrix, n, changedSet) {
+  let html = `<table class="matrix-table"><tr>`;
+  const cols = matrix[0].length;
+  for (let i = 0; i < matrix.length; i++) {
+    html += '<tr>';
+    html += `<td class="matrix-bracket-left"></td>`;
+    for (let j = 0; j < cols; j++) {
+      const isAug = j === n;
+      const key = `${i}-${j}`;
+      const isChanged = changedSet && changedSet.has(key);
+      html += `<td class="${isAug ? 'aug-col' : ''} ${isChanged ? 'changed' : ''}">${fmt(matrix[i][j])}</td>`;
+    }
+    html += `<td class="matrix-bracket-right"></td>`;
+    html += '</tr>';
+  }
+  html += '</table>';
+  return html;
+}
+
+function renderClassificationBanner(result) {
+  const map = {
+    DETERMINADO: { cls: 'det', num: 'I', title: 'Sistema Possível e Determinado (SPD)', desc: 'Posto da matriz de coeficientes = número de incógnitas. Existe exatamente uma solução.' },
+    INDETERMINADO: { cls: 'indet', num: '∞', title: 'Sistema Possível e Indeterminado (SPI)', desc: 'Posto menor que o número de incógnitas. Há infinitas soluções, parametrizadas por variável(eis) livre(s).' },
+    IMPOSSIVEL: { cls: 'imp', num: '∅', title: 'Sistema Impossível (SI)', desc: 'Uma linha da forma escalonada apresenta 0 = k, com k ≠ 0. Não existe solução.' },
+  };
+  const info = map[result.classification];
+  return `
+    <div class="classification-banner ${info.cls}">
+      <div class="badge-num">${info.num}</div>
+      <div>
+        <h3>${info.title}</h3>
+        <p>${info.desc}</p>
+      </div>
+    </div>
+  `;
+}
+
+function renderSolution(result) {
+  const { finalMatrix, n, pivotCols, classification, m } = result;
+  if (classification === 'IMPOSSIVEL') {
+    return `
+      <div class="solution-block">
+        <h3>Solução</h3>
+        <p class="free-note">O sistema não admite solução. A forma escalonada reduzida contém uma linha equivalente a <code>0 = k</code>, com <code>k ≠ 0</code>, o que é uma contradição.</p>
+      </div>
+    `;
+  }
+
+  const pivotSet = new Set(pivotCols);
+  let chips = '';
+  for (let j = 0; j < n; j++) {
+    if (pivotSet.has(j)) {
+      const row = pivotCols.indexOf(j);
+      let expr = fmt(finalMatrix[row][n]);
+      // soma termos de variáveis livres, se houver (SPI)
+      for (let k = 0; k < n; k++) {
+        if (!pivotSet.has(k) && !almostZero(finalMatrix[row][k])) {
+          const coefK = -finalMatrix[row][k];
+          const sign = coefK >= 0 ? '+' : '−';
+          expr += ` ${sign} ${fmt(Math.abs(coefK))}·x${k + 1}`;
+        }
+      }
+      chips += `<div class="var-chip">x${j + 1} = <b>${expr}</b></div>`;
+    } else {
+      chips += `<div class="var-chip">x${j + 1} = <b>t${j + 1}</b> <span style="color:var(--ink-soft); font-size:12px;">(livre)</span></div>`;
+    }
+  }
+
+  let freeNote = '';
+  if (classification === 'INDETERMINADO') {
+    const freeVars = [];
+    for (let j = 0; j < n; j++) if (!pivotSet.has(j)) freeVars.push(`x${j + 1}`);
+    freeNote = `<p class="free-note">Variáveis livres: ${freeVars.map(v => `<code>${v}</code>`).join(', ')}. Cada valor atribuído a elas gera uma solução distinta — o sistema tem infinitas soluções.</p>`;
+  }
+
+  return `
+    <div class="solution-block">
+      <h3>Solução</h3>
+      <div class="solution-vars">${chips}</div>
+      ${freeNote}
+    </div>
+  `;
+}
+
+function renderStepNavigator(result) {
+  const total = result.steps.length;
+  const idx = state.currentStepIdx;
+  const step = result.steps[idx];
+  const changedSet = new Set(step.changed || []);
+
+  return `
+    <div class="steps-header">
+      <h3>Histórico de operações elementares</h3>
+      <div class="step-nav">
+        <button class="nav-btn" id="btnPrevStep" ${idx === 0 ? 'disabled' : ''}>‹</button>
+        <span class="step-counter">${idx + 1} / ${total}</span>
+        <button class="nav-btn" id="btnNextStep" ${idx === total - 1 ? 'disabled' : ''}>›</button>
+      </div>
+    </div>
+    <div class="step-card">
+      <div class="step-desc"><span class="step-idx">PASSO ${idx + 1}</span>${step.desc}</div>
+      <div class="matrix-stage">${renderMatrix(step.matrix, result.n, changedSet)}</div>
+    </div>
+    <div class="all-steps-toggle">
+      <button class="ghost" id="btnToggleAll">${state.showAllSteps ? 'Ocultar lista completa' : 'Ver lista completa de operações'}</button>
+    </div>
+    ${state.showAllSteps ? renderFullHistory(result) : ''}
+  `;
+}
+
+function renderFullHistory(result) {
+  let html = '<div class="history-list">';
+  result.steps.forEach((s, i) => {
+    html += `
+      <div class="history-row">
+        <div class="h-idx">${String(i + 1).padStart(2, '0')}</div>
+        <div class="h-desc">${s.desc}</div>
+      </div>
+    `;
+  });
+  html += '</div>';
+  return html;
+}
+
+function renderAll() {
+  const result = state.result;
+  if (!result) return;
+  const html = `
+    ${renderClassificationBanner(result)}
+    ${renderSolution(result)}
+    ${renderStepNavigator(result)}
+  `;
+  document.getElementById('resultArea').innerHTML = html;
+  attachStepListeners();
+}
+
+function attachStepListeners() {
+  const prev = document.getElementById('btnPrevStep');
+  const next = document.getElementById('btnNextStep');
+  const toggle = document.getElementById('btnToggleAll');
+  if (prev) prev.addEventListener('click', () => { state.currentStepIdx--; renderAll(); });
+  if (next) next.addEventListener('click', () => { state.currentStepIdx++; renderAll(); });
+  if (toggle) toggle.addEventListener('click', () => { state.showAllSteps = !state.showAllSteps; renderAll(); });
+}
+
+/* =========================================================
+   AÇÕES PRINCIPAIS
+========================================================= */
+function solve() {
+  const { coef, rhs } = readMatrixFromGrid();
+  const result = gaussJordan(coef, rhs);
+  state.result = result;
+  state.currentStepIdx = 0;
+  state.showAllSteps = false;
+  renderAll();
+  document.getElementById('resultArea').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function clearAll() {
+  const m = state.m, n = state.n;
+  for (let i = 0; i < m; i++) {
+    for (let j = 0; j < n; j++) document.getElementById(`cell-${i}-${j}`).value = '';
+    document.getElementById(`cell-${i}-b`).value = '';
+  }
+  document.getElementById('resultArea').innerHTML = `
+    <div class="empty-state">
+      <div class="glyph">[ ]</div>
+      <p>Monte a matriz aumentada à esquerda — diferenciando coeficientes (A) do vetor de resultados (b) — e clique em <strong>Resolver sistema</strong> para ver cada operação elementar até a forma escalonada reduzida.</p>
+    </div>
+  `;
+  state.result = null;
+}
+
+const EXAMPLES = {
+  det: { coef: [[2,1,-1],[-3,-1,2],[-2,1,2]], rhs: [[8],[-11],[-3]] },
+  indet: { coef: [[1,2,3],[2,4,6]], rhs: [[6],[12]] },
+  imp: { coef: [[1,1],[1,1]], rhs: [[2],[5]] },
+};
+
+function loadExample(key) {
+  const ex = EXAMPLES[key];
+  fillGrid(ex.coef, ex.rhs);
+}
+
+/* =========================================================
+   EVENTOS
+========================================================= */
+document.getElementById('btnBuild').addEventListener('click', buildGrid);
+document.getElementById('btnSolve').addEventListener('click', solve);
+document.getElementById('btnClear').addEventListener('click', clearAll);
+document.querySelectorAll('.example-btn').forEach(btn => {
+  btn.addEventListener('click', () => loadExample(btn.dataset.example));
+});
+
+buildGrid();
+</script>
+</body>
+</html>
